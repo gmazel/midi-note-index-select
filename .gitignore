@@ -3,3 +3,4 @@ dist/
 *.ablx
 .env
 *.js.map
+.DS_Store
