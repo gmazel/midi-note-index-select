@@ -1,0 +1,24 @@
+{
+  "name": "midi-note-index-select",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "engines": { "node": ">=24.14.1" },
+  "type": "module",
+  "scripts": {
+    "build": "tsc --noEmit && tsx build.ts --production",
+    "build:dev": "tsc --noEmit && tsx build.ts",
+    "start": "npm run build:dev && extensions-cli run",
+    "package": "npm run build && extensions-cli package"
+  },
+  "dependencies": {
+    "@ableton-extensions/sdk": "*"
+  },
+  "devDependencies": {
+    "@ableton-extensions/cli": "*",
+    "@ableton-extensions/create-extension": "*",
+    "@types/node": "^24.1.0",
+    "esbuild": "0.28.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.9.3"
+  }
+}

@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Note Index Selector</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:      #1a1a1a;
+      --surface: #242424;
+      --border:  #333;
+      --text:    #e0e0e0;
+      --muted:   #777;
+      --accent:  #FF6400;
+      --green:   #27ae60;
+      --red:     #c0392b;
+      font-size: 13px;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: "SF Mono", "Fira Mono", "Consolas", monospace;
+      padding: 14px 16px 18px;
+      user-select: none;
+    }
+    .label {
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 14px 0 6px;
+    }
+    .label:first-child { margin-top: 0; }
+    .card {
+      background: var(--surface);
+      border: 0.5px solid var(--border);
+      border-radius: 5px;
+      padding: 12px 14px;
+    }
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .row:last-child { margin-bottom: 0; }
+    .row label { font-size: 11px; color: var(--muted); min-width: 76px; }
+    .row label sup { font-size: 8px; }
+    input[type=range] {
+      flex: 1;
+      -webkit-appearance: none;
+      height: 3px;
+      background: var(--border);
+      border-radius: 2px;
+      outline: none;
+      cursor: pointer;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      background: var(--accent);
+      cursor: pointer;
+    }
+    .val { font-size: 15px; font-weight: 500; min-width: 32px; text-align: right; }
+
+    /* note grid */
+    .grid { display: flex; flex-wrap: wrap; gap: 4px; }
+    .cell {
+      width: 26px; height: 26px;
+      border-radius: 3px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 9px;
+      border: 0.5px solid var(--border);
+      background: var(--bg);
+      color: var(--muted);
+      transition: background 0.1s, color 0.1s;
+    }
+    .cell.on  { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .cell.off { opacity: 0.3; }
+
+    /* semitone nudge buttons */
+    .nudge-row { display: flex; align-items: center; gap: 8px; }
+    .nudge-btn {
+      width: 32px; height: 32px;
+      border-radius: 4px;
+      font-size: 16px;
+      font-family: inherit;
+      background: var(--surface);
+      color: var(--text);
+      border: 0.5px solid var(--border);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .nudge-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .nudge-btn:active { transform: scale(0.95); }
+    .semitone-display {
+      flex: 1;
+      text-align: center;
+      font-size: 22px;
+      font-weight: 500;
+      color: var(--text);
+    }
+    .semitone-display.pos { color: var(--green); }
+    .semitone-display.neg { color: var(--red); }
+    .semitone-display.zero { color: var(--muted); }
+
+    /* scale snap */
+    .snap-row { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
+    .snap-toggle {
+      padding: 5px 10px;
+      font-size: 11px;
+      font-family: inherit;
+      background: var(--surface);
+      color: var(--muted);
+      border: 0.5px solid var(--border);
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .snap-toggle.on { color: var(--accent); border-color: var(--accent); }
+    select {
+      flex: 1;
+      background: var(--surface);
+      color: var(--text);
+      border: 0.5px solid var(--border);
+      border-radius: 4px;
+      padding: 5px 8px;
+      font-size: 11px;
+      font-family: inherit;
+      cursor: pointer;
+      outline: none;
+    }
+    select:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* stats */
+    .stats { display: flex; gap: 8px; margin-top: 10px; }
+    .stat {
+      flex: 1;
+      background: var(--surface);
+      border: 0.5px solid var(--border);
+      border-radius: 5px;
+      padding: 8px 10px;
+    }
+    .stat-n { font-size: 18px; font-weight: 500; color: var(--accent); }
+    .stat-l { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+    /* action buttons */
+    .btn-row { display: flex; gap: 8px; margin-top: 14px; }
+    .btn {
+      flex: 1;
+      padding: 10px 0;
+      font-size: 12px;
+      font-family: inherit;
+      letter-spacing: 0.04em;
+      border-radius: 5px;
+      cursor: pointer;
+      border: 0.5px solid var(--border);
+      background: var(--surface);
+      color: var(--text);
+    }
+    .btn:hover { border-color: #555; }
+    .btn.primary { border-color: var(--accent); color: var(--accent); }
+    .btn.primary:hover { background: #2a1800; }
+    .btn:active { transform: scale(0.98); }
+  </style>
+</head>
+<body>
+
+  <div class="label">interval — which notes to affect</div>
+  <div class="card">
+    <div class="row">
+      <label>every N<sup>th</sup></label>
+      <input type="range" id="nSlider" min="1" max="16" step="1" value="2" />
+      <span class="val" id="nVal">2</span>
+    </div>
+    <div class="row">
+      <label>start at</label>
+      <input type="range" id="offSlider" min="1" max="2" step="1" value="1" />
+      <span class="val" id="offVal">1</span>
+    </div>
+    <div class="row">
+      <label>preview (N)</label>
+      <input type="range" id="totSlider" min="4" max="32" step="1" value="16" />
+      <span class="val" id="totVal">16</span>
+    </div>
+  </div>
+
+  <div class="label">preview — orange = affected</div>
+  <div class="card">
+    <div class="grid" id="grid"></div>
+    <div class="stats">
+      <div class="stat"><div class="stat-n" id="sAff">—</div><div class="stat-l">affected</div></div>
+      <div class="stat"><div class="stat-n" style="color:var(--muted)" id="sUn">—</div><div class="stat-l">unchanged</div></div>
+      <div class="stat"><div class="stat-n" style="color:var(--muted)" id="sTot">—</div><div class="stat-l">total</div></div>
+    </div>
+  </div>
+
+  <div class="label">transpose — semitones</div>
+  <div class="card">
+    <div class="nudge-row">
+      <button class="nudge-btn" id="bigDown" title="−12">⇊</button>
+      <button class="nudge-btn" id="stepDown" title="−1">−</button>
+      <div class="semitone-display zero" id="semiDisplay">0</div>
+      <button class="nudge-btn" id="stepUp" title="+1">+</button>
+      <button class="nudge-btn" id="bigUp" title="+12">⇈</button>
+    </div>
+  </div>
+
+  <div class="label">scale snap (optional)</div>
+  <div class="card">
+    <div class="snap-row">
+      <button class="snap-toggle" id="snapToggle">off</button>
+      <select id="rootSelect">
+        <option value="0">C</option><option value="1">C♯ / D♭</option>
+        <option value="2">D</option><option value="3">D♯ / E♭</option>
+        <option value="4">E</option><option value="5">F</option>
+        <option value="6">F♯ / G♭</option><option value="7">G</option>
+        <option value="8">G♯ / A♭</option><option value="9">A</option>
+        <option value="10">A♯ / B♭</option><option value="11">B</option>
+      </select>
+      <select id="scaleSelect">
+        <option value="major">Major</option>
+        <option value="minor">Minor (natural)</option>
+        <option value="harmonicMinor">Harmonic minor</option>
+        <option value="melodicMinor">Melodic minor</option>
+        <option value="dorian">Dorian</option>
+        <option value="phrygian">Phrygian</option>
+        <option value="lydian">Lydian</option>
+        <option value="mixolydian">Mixolydian</option>
+        <option value="locrian">Locrian</option>
+        <option value="pentatonicMajor">Pentatonic major</option>
+        <option value="pentatonicMinor">Pentatonic minor</option>
+        <option value="blues">Blues</option>
+        <option value="wholeTone">Whole tone</option>
+        <option value="diminished">Diminished</option>
+        <option value="chromatic">Chromatic</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="btn-row">
+    <button class="btn" id="cancelBtn">cancel</button>
+    <button class="btn primary" id="applyBtn">apply to clip</button>
+  </div>
+
+  <script>
+    let semitones = 0;
+    let snapOn = false;
+
+    // ── Interval preview ──────────────────────────────────────────────────
+    function getAffected(total, n, offset) {
+      const s = new Set();
+      for (let i = offset; i <= total; i += n) s.add(i);
+      return s;
+    }
+
+    function updatePreview() {
+      const n   = parseInt(document.getElementById("nSlider").value);
+      const off = Math.min(parseInt(document.getElementById("offSlider").value), n);
+      const tot = parseInt(document.getElementById("totSlider").value);
+
+      document.getElementById("offSlider").max = n;
+      document.getElementById("offSlider").value = off;
+      document.getElementById("nVal").textContent  = n;
+      document.getElementById("offVal").textContent = off;
+      document.getElementById("totVal").textContent = tot;
+
+      const aff = getAffected(tot, n, off);
+      const grid = document.getElementById("grid");
+      grid.innerHTML = "";
+      for (let i = 1; i <= tot; i++) {
+        const c = document.createElement("div");
+        c.className = "cell " + (aff.has(i) ? "on" : "off");
+        c.textContent = i;
+        grid.appendChild(c);
+      }
+      document.getElementById("sAff").textContent  = aff.size;
+      document.getElementById("sUn").textContent   = tot - aff.size;
+      document.getElementById("sTot").textContent  = tot;
+    }
+
+    document.getElementById("nSlider").addEventListener("input", updatePreview);
+    document.getElementById("offSlider").addEventListener("input", updatePreview);
+    document.getElementById("totSlider").addEventListener("input", updatePreview);
+
+    // ── Semitone nudge ────────────────────────────────────────────────────
+    function updateSemiDisplay() {
+      const el = document.getElementById("semiDisplay");
+      el.textContent = (semitones > 0 ? "+" : "") + semitones;
+      el.className = "semitone-display " + (semitones > 0 ? "pos" : semitones < 0 ? "neg" : "zero");
+    }
+
+    document.getElementById("stepDown").addEventListener("click", () => { semitones = Math.max(-48, semitones - 1); updateSemiDisplay(); });
+    document.getElementById("stepUp").addEventListener("click",   () => { semitones = Math.min(48, semitones + 1);  updateSemiDisplay(); });
+    document.getElementById("bigDown").addEventListener("click",  () => { semitones = Math.max(-48, semitones - 12); updateSemiDisplay(); });
+    document.getElementById("bigUp").addEventListener("click",    () => { semitones = Math.min(48, semitones + 12);  updateSemiDisplay(); });
+
+    // ── Scale snap toggle ─────────────────────────────────────────────────
+    document.getElementById("snapToggle").addEventListener("click", () => {
+      snapOn = !snapOn;
+      const btn = document.getElementById("snapToggle");
+      btn.textContent = snapOn ? "on" : "off";
+      btn.className = "snap-toggle" + (snapOn ? " on" : "");
+      document.getElementById("rootSelect").disabled  = !snapOn;
+      document.getElementById("scaleSelect").disabled = !snapOn;
+    });
+    document.getElementById("rootSelect").disabled  = true;
+    document.getElementById("scaleSelect").disabled = true;
+
+    // ── Apply / Cancel ────────────────────────────────────────────────────
+    function closeDialog(payload) {
+      const msg = JSON.stringify(payload);
+      // macOS webview
+      if (window.webkit?.messageHandlers?.live) {
+        window.webkit.messageHandlers.live.postMessage(
+          JSON.stringify({ method: "close_and_send", params: [msg] })
+        );
+        return;
+      }
+      // Windows webview
+      if (window.chrome?.webview) {
+        window.chrome.webview.postMessage(
+          JSON.stringify({ method: "close_and_send", params: [msg] })
+        );
+        return;
+      }
+      // Browser preview fallback
+      console.log("[panel] Would send:", msg);
+    }
+
+    document.getElementById("cancelBtn").addEventListener("click", () => {
+      closeDialog({ type: "CANCEL" });
+    });
+
+    document.getElementById("applyBtn").addEventListener("click", () => {
+      const n   = parseInt(document.getElementById("nSlider").value);
+      const off = Math.min(parseInt(document.getElementById("offSlider").value), n);
+
+      const filter = { kind: "every", n, offset: off };
+
+      const transpose = { semitones };
+      if (snapOn) {
+        transpose.snapToScale = {
+          root:  parseInt(document.getElementById("rootSelect").value),
+          scale: document.getElementById("scaleSelect").value,
+        };
+      }
+
+      closeDialog({
+        type: "APPLY",
+        options: { filter, transpose }
+      });
+    });
+
+    // ── Init ──────────────────────────────────────────────────────────────
+    updatePreview();
+  </script>
+</body>
+</html>

@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #1a1a1a; color: #e0e0e0; font-family: monospace; font-size: 13px; padding: 14px 16px 18px; }
+  .label { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: #777; margin: 12px 0 5px; }
+  .label:first-child { margin-top: 0; }
+  .card { background: #242424; border: 0.5px solid #333; border-radius: 5px; padding: 10px 12px; }
+  .row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .row:last-child { margin-bottom: 0; }
+  .row label { font-size: 11px; color: #777; min-width: 70px; }
+  input[type=range] { flex: 1; -webkit-appearance: none; height: 3px; background: #333; border-radius: 2px; outline: none; cursor: pointer; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: #FF6400; cursor: pointer; }
+  .val { font-size: 14px; font-weight: 500; min-width: 28px; text-align: right; }
+  .grid { display: flex; flex-wrap: wrap; gap: 3px; margin-bottom: 8px; }
+  .cell { width: 24px; height: 24px; border-radius: 3px; display: flex; align-items: center; justify-content: center; font-size: 9px; border: 0.5px solid #333; background: #1a1a1a; color: #777; }
+  .cell.on { background: #FF6400; border-color: #FF6400; color: #fff; }
+  .cell.off { opacity: 0.3; }
+  .stats { display: flex; gap: 6px; }
+  .stat { flex: 1; background: #1a1a1a; border: 0.5px solid #333; border-radius: 4px; padding: 6px 8px; }
+  .stat-n { font-size: 16px; font-weight: 500; color: #FF6400; }
+  .stat-l { font-size: 9px; color: #777; }
+  .nudge-row { display: flex; align-items: center; gap: 8px; }
+  .nbtn { width: 38px; height: 34px; border-radius: 4px; font-size: 12px; font-family: monospace; background: #1a1a1a; color: #e0e0e0; border: 0.5px solid #333; cursor: pointer; flex-shrink: 0; }
+  .nbtn:active { background: #333; }
+  .semi { flex: 1; text-align: center; font-size: 24px; font-weight: 500; color: #777; }
+  .semi.pos { color: #27ae60; }
+  .semi.neg { color: #c0392b; }
+  .snap-row { display: flex; gap: 6px; align-items: center; }
+  .sbtn { padding: 5px 10px; font-size: 11px; font-family: monospace; background: #1a1a1a; color: #777; border: 0.5px solid #333; border-radius: 4px; cursor: pointer; flex-shrink: 0; }
+  .sbtn.on { color: #FF6400; border-color: #FF6400; }
+  select { flex: 1; background: #242424; color: #e0e0e0; border: 0.5px solid #333; border-radius: 4px; padding: 5px 6px; font-size: 11px; font-family: monospace; outline: none; }
+  select:disabled { opacity: 0.4; }
+  .btn-row { display: flex; gap: 8px; margin-top: 12px; }
+  .btn { flex: 1; padding: 10px 0; font-size: 12px; font-family: monospace; border-radius: 5px; cursor: pointer; border: 0.5px solid #555; background: #242424; color: #e0e0e0; }
+  .btn.primary { border-color: #FF6400; color: #FF6400; }
+  .btn:active { opacity: 0.7; }
+</style>
+</head>
+<body>
+
+<div class="label">interval</div>
+<div class="card">
+  <div class="row">
+    <label>every Nth</label>
+    <input type="range" id="nSlider" min="1" max="16" step="1" value="2">
+    <span class="val" id="nVal">2</span>
+  </div>
+  <div class="row">
+    <label>start at</label>
+    <input type="range" id="offSlider" min="1" max="2" step="1" value="1">
+    <span class="val" id="offVal">1</span>
+  </div>
+  <div class="row">
+    <label>preview</label>
+    <input type="range" id="totSlider" min="4" max="32" step="1" value="16">
+    <span class="val" id="totVal">16</span>
+  </div>
+</div>
+
+<div class="label">preview — orange = affected</div>
+<div class="card">
+  <div class="grid" id="grid"></div>
+  <div class="stats">
+    <div class="stat"><div class="stat-n" id="sAff">—</div><div class="stat-l">affected</div></div>
+    <div class="stat"><div class="stat-n" style="color:#777" id="sUn">—</div><div class="stat-l">unchanged</div></div>
+    <div class="stat"><div class="stat-n" style="color:#777" id="sTot">—</div><div class="stat-l">total</div></div>
+  </div>
+</div>
+
+<div class="label">transpose (semitones)</div>
+<div class="card">
+  <div class="nudge-row">
+    <button class="nbtn" id="bigDown">-12</button>
+    <button class="nbtn" id="stepDown">-1</button>
+    <div class="semi" id="semiDisplay">0</div>
+    <button class="nbtn" id="stepUp">+1</button>
+    <button class="nbtn" id="bigUp">+12</button>
+  </div>
+</div>
+
+<div class="label">scale snap (optional)</div>
+<div class="card">
+  <div class="snap-row">
+    <button class="sbtn" id="snapBtn">off</button>
+    <select id="rootSel" disabled>
+      <option value="0">C</option><option value="1">C# / Db</option>
+      <option value="2">D</option><option value="3">D# / Eb</option>
+      <option value="4">E</option><option value="5">F</option>
+      <option value="6">F# / Gb</option><option value="7">G</option>
+      <option value="8">G# / Ab</option><option value="9">A</option>
+      <option value="10">A# / Bb</option><option value="11">B</option>
+    </select>
+    <select id="scaleSel" disabled>
+      <option value="major">Major</option>
+      <option value="minor">Minor</option>
+      <option value="harmonicMinor">Harmonic minor</option>
+      <option value="melodicMinor">Melodic minor</option>
+      <option value="dorian">Dorian</option>
+      <option value="phrygian">Phrygian</option>
+      <option value="lydian">Lydian</option>
+      <option value="mixolydian">Mixolydian</option>
+      <option value="locrian">Locrian</option>
+      <option value="pentatonicMajor">Pentatonic major</option>
+      <option value="pentatonicMinor">Pentatonic minor</option>
+      <option value="blues">Blues</option>
+      <option value="wholeTone">Whole tone</option>
+      <option value="diminished">Diminished</option>
+      <option value="chromatic">Chromatic</option>
+    </select>
+  </div>
+</div>
+
+<div class="btn-row">
+  <button class="btn" id="cancelBtn">cancel</button>
+  <button class="btn primary" id="applyBtn">apply to clip</button>
+</div>
+
+<div style="margin-top:14px; text-align:center; font-size:10px; color:#555; line-height:1.8;">
+  Programmed by Gregg Mazel<br>
+  with some major help from Claude AI!<br>
+  <a href="https://www.mazelmusicalarts.org" style="color:#FF6400; text-decoration:none;">Please visit us at mazelmusicalarts.org</a>
+</div>
+<script>
+var semitones = 0;
+var snapOn = false;
+
+function send(payload) {
+  window.webkit.messageHandlers.live.postMessage(
+    { method: 'close_and_send', params: [JSON.stringify(payload)] }
+  );
+}
+function updatePreview() {
+  var n   = parseInt(document.getElementById('nSlider').value);
+  var off = parseInt(document.getElementById('offSlider').value);
+  var tot = parseInt(document.getElementById('totSlider').value);
+  if (off > n) { off = 1; document.getElementById('offSlider').value = '1'; }
+  document.getElementById('offSlider').setAttribute('max', String(n));
+  document.getElementById('nVal').textContent   = String(n);
+  document.getElementById('offVal').textContent = String(off);
+  document.getElementById('totVal').textContent = String(tot);
+  var aff = new Set();
+  for (var i = off; i <= tot; i += n) aff.add(i);
+  var grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  for (var j = 1; j <= tot; j++) {
+    var c = document.createElement('div');
+    c.className = 'cell ' + (aff.has(j) ? 'on' : 'off');
+    c.textContent = String(j);
+    grid.appendChild(c);
+  }
+  document.getElementById('sAff').textContent = String(aff.size);
+  document.getElementById('sUn').textContent  = String(tot - aff.size);
+  document.getElementById('sTot').textContent = String(tot);
+}
+
+function updateSemi() {
+  var el = document.getElementById('semiDisplay');
+  el.textContent = semitones > 0 ? '+' + String(semitones) : String(semitones);
+  el.className = 'semi ' + (semitones > 0 ? 'pos' : semitones < 0 ? 'neg' : '');
+}
+
+document.getElementById('nSlider').addEventListener('input', updatePreview);
+document.getElementById('offSlider').addEventListener('input', updatePreview);
+document.getElementById('totSlider').addEventListener('input', updatePreview);
+
+document.getElementById('stepDown').addEventListener('click', function() { semitones = Math.max(-48, semitones - 1);  updateSemi(); });
+document.getElementById('stepUp').addEventListener('click',   function() { semitones = Math.min(48,  semitones + 1);  updateSemi(); });
+document.getElementById('bigDown').addEventListener('click',  function() { semitones = Math.max(-48, semitones - 12); updateSemi(); });
+document.getElementById('bigUp').addEventListener('click',    function() { semitones = Math.min(48,  semitones + 12); updateSemi(); });
+
+document.getElementById('snapBtn').addEventListener('click', function() {
+  snapOn = !snapOn;
+  this.textContent = snapOn ? 'on' : 'off';
+  this.className = 'sbtn' + (snapOn ? ' on' : '');
+  document.getElementById('rootSel').disabled  = !snapOn;
+  document.getElementById('scaleSel').disabled = !snapOn;
+});
+
+document.getElementById('cancelBtn').addEventListener('click', function() {
+  send({ type: 'CANCEL' });
+});
+
+document.getElementById('applyBtn').addEventListener('click', function() {
+  var n   = parseInt(document.getElementById('nSlider').value);
+  var off = parseInt(document.getElementById('offSlider').value);
+  if (off > n) off = 1;
+  var transpose = { semitones: semitones };
+  if (snapOn) {
+    transpose.snapToScale = {
+      root:  parseInt(document.getElementById('rootSel').value),
+      scale: document.getElementById('scaleSel').value
+    };
+  }
+  send({ type: 'APPLY', options: { filter: { kind: 'every', n: n, offset: off }, transpose: transpose } });
+});
+
+updatePreview();
+</script>
+</body>
+</html>

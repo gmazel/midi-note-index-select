@@ -1,0 +1,7 @@
+{
+  "name": "midi-note-index-select",
+  "version": "0.1.0",
+  "author": "Gregg Mazel",
+  "entry": "dist/index.js",
+  "minimumApiVersion": "1.0.0"
+}
